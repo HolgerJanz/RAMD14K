@@ -20,7 +20,7 @@ Files:
     RAMD14K.ASM     Driver Source
     RAMD14K.COM     Driver Executable 
     RAMD14K.pdf     Documentation PDF
-    InsightAtariComputeIssue77Oct1986.txt   Used previous Work
+    InsightAtariComputeIssue77Oct1986.txt   Used previous work
 
 ---
 
