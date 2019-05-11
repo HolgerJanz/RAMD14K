@@ -1,0 +1,171 @@
+https://www.atarimagazines.com/compute/issue77/insight_atari.php
+
+INSIGHT: Atari
+
+Bill Wilkinson
+
+A Special RAMdisk For The 800XL
+===============================
+
+This is a continuation of my August column, wherein I discussed some of
+the ins and outs of memory bank selection on a 130XE computer and gave
+you a means of referring to your RAMdisk as something other than D8:. At
+the end of that article, I promised that the September issue would talk
+about why a 130XE has only 126K bytes of RAM, and other oddities. As you
+probably noticed, I got sidetracked last month. I hope you didn't mind
+too much my reminiscing, and I promise to get back to work with this issue.
+
+In fact, let's start working now: You'll recall that I had posed the
+question "Is there a way to use the extra 16K memory of the 800XL as a
+RAMdisk?" My answer was a hesitant yes, because it isn't easy (it took me
+a relatively long time to prepare this article). For example, the extra
+memory of the XL is located from $C000 to $FFFF (the top 16K bytes of the
+6502's address space), which is the same space used by the OS ROMs and the
+I/O hardware registers (another instance of bank selection). What's wrong
+with that, you ask? Why can't I just turn off the ROMs and I/O registers
+and start using the underlying RAM?
+
+With Frightening Regularity
+---------------------------
+
+Well, to start with, any time an interrupt occurs, the 6502 looks in some
+locations in the top of memory (between $FFFA and $FFFF) to find the
+address of the routine which will process the interrupt. If we have turned
+off the OS in order to use the extra RAM, those locations surely will
+contain garbage. And interrupts occur on Atari computers with frightening
+regularity: once every 1/60 second for screen refresh, once every time a
+display list interrupt is encountered, once for each key press; the list
+goes on.
+
+Still there are more problems. Remember all those references in the August
+issue to 62K of RAM and 126K of RAM, when you would expect the figures to
+be 64K and 128K? Well, it turns out that, even if we disable the OS ROMs
+in order to access the extra RAM, there is no way to disable the hardware
+I/O space (which occupies addresses $D000 through $D7FF). There simply is
+no RAM in these 2K. Period. So we are down to 14K of hard-to-use RAM with
+a nasty hole in the middle of it.
+
+Any more nasties to contend with? Yes. When your Atari is displaying text
+of any kind (GRAPHICS 0, 1, or 2, or the text window in other modes), the
+ANTIC chip gets the shapes of the characters to display from one of two
+character sets in ROM (American version at location $E000, international
+set at $CC00). If we turn off the ROMs, either we must first copy the
+character sets to RAM (thus decreasing usable RAM still further) or we
+must turn them off only while no characters are being displayed (for
+example, during the vertical blank interval).
+
+And let's throw in one more monkey wrench: With all versions of DOS 2,
+including DOS 2.5, the VTOC (Volume Table Of Contents) sector and the
+directory sectors are smack-dab in the middle of a 720-sector disk. That
+means they use sector numbers 360 through 368. Hmmm—if we have a 16K
+RAM-disk, we have 128 simulated sectors. And 360 is bigger than 128.
+Kablooey.
+
+A Tall Order
+------------
+
+So, without major surgery, DOS 2.5 cannot use the 800XL's extra RAM as
+even a small RAMdisk. Work to be done includes (1) changing DOS 2.5's
+RAMdisk handler to use a different 16K range of memory; (2) fixing the
+bank select logic so that it turns the OS ROMs on and off instead of
+actually selecting banks; (3) somehow changing the RAMdisk initialization
+code so that it knows we have only one bank of RAM and that even that bank
+has a 2K hole in it; (4) somehow moving the simulated VTOC and directory
+sectors into our limited 14K (112 pseudo-sector) range; (5) disabling all
+interrupts while we access the RAM; and (6) only accessing the RAM during
+the vertical blank interval.
+
+Whew. Tall order, no? The only easy task here is item 6. When we first
+worked on DOS 2.5, the 130XE hardware had this same restriction, and there
+is still a flag buried in DOS 2.5 which tells it to wait for the vertical
+blank period before doing its simulated sector I/O.
+
+Well, the listing accompanying this article does all of the above. When
+you enter and run this program, it creates a new version of RAMDISK.COM,
+the special boot file that DOS 2.5 uses, which indeed gives you a 14K
+RAMdisk. The program is only for 800XL owners, and only for DOS 2.5. It
+won't work with any other combination of computer or DOS. The program
+overwrites the existing RAMDISK.COM file on the DOS disk, so be sure you
+have a backup if you want to keep a copy of the original file.
+
+Some other cautions are also in order:
+
+Don't hit the RESET key while the RAMdisk is active. This is a sure way to
+scramble the contents of the RAMdisk.
+
+Don't try to format the RAM-disk (and this means don't use a BASIC program
+which uses XIO 254). This version of RAMDISK.COM cheats a little: Because
+of the need for making a hole in the middle of the pseudodisk where the
+I/O registers are, and because we have to insure that the directory area
+is within the 16K bounds, we have to tell DOS that some sectors on the
+disk are already in use. We do this by modifying the VTOC of the RAMdisk
+after it has been formatted. If you reformat the RAMdisk, DOS may try to
+use those nonexistent pseudosectors and crash your computer.
+
+This is a very small RAM-disk. If you use it, you'll find 105 free sectors
+is the maximum. Even to get that figure, I cheated: I allowed only 3
+sectors for the directory instead of the customary 8, so you can have a
+maximum of 24 files on this RAMdisk (probably still overkill). However,
+DOS does not know about this limitation, and you can crash the system by
+creating 25 files.
+
+Don't use DOS's Write DOS Files menu command after booting with the
+RAMDISK.COM created here. This program actually puts patches right in the
+middle of DOS, and trying to use an ordinary RAM-disk with the patched DOS
+could be disastrous.
+
+Although the program here is written in BASIC and creates the RAMDISK.COM
+file directly, I've made the original assembly language source code
+available on CompuServe under the filename RAM14K.ASM in the Utilities
+section of the DownLoad libraries (also known as DL3). I know I promised
+to do that with the 1027 printer fixer program back in June, but the file
+never appeared. The explanation is sad, but simple: The disk with my June
+program on it went bad shortly after I wrote the article. Let that be a
+lesson: Back up everything. I promise to back up this program many times
+over.
+
+Also, here's an idea for improving this program: It turns out that a total
+of 105 sectors is 18 sectors greater than the minimum needed to put
+DUP.SYS and MEM.SAV on the RAMdisk. So why not do so and aid the
+performance of DOS 2.5 tremendously? The source code is on CompuServe,
+so have at it.
+
+HN 1000 REM This program creates a
+NJ 1010 REM DOS 2.5 RAMDISK.COM file
+MK 1020 REM for 800XL owners to allow
+ML 1030 REM use of RAM under OS ROMs
+GO 1040 REM as a small (105 sector)
+GD 1050 REM RAMdisk.
+KL 1060 REM
+BE 1070 OPEN #1, 8, 0, "D : RAMDISK.COM"
+BC 1100 READ BYTE
+BO 1110 IF BYTE > = 0 THEN PUT #1, BYTE : CKSUM = CKSUM + BYTE : GOTO 1100
+BH 1120 CLOSE #1 : IF CKSUM < > 15523 THEN PRINT "ERROR IN DATA STATEMENTS" : STOP
+JM 1130 END
+LC 5000 DATA 255, 255, 223, 7, 223, 7, 0, 128
+EP 5010 DATA 7, 128, 7, 8, 137, 11, 137, 11
+EK 5020 DATA 8, 63, 21, 63, 21, 49, 141, 20
+KD 5030 DATA 157, 20, 201, 3, 144, 4, 40, 160
+PK 5040 DATA 139, 96, 32, 203, 18, 165, 67, 74
+PB 5050 DATA 74, 9, 192, 222, 18, 235, 18, 106
+KO 5060 DATA 106, 106, 8, 173, 1, 211,74, 40
+IC 5070 DATA 42, 141, 1, 211, 96, 0, 128, 58
+LE 5080 DATA 128, 173, 10, 7, 9, 128, 141, 10
+OP 5090 DATA 7, 32, 224, 7, 162, 112, 169, 254
+JI 5100 DATA 157, 66, 3, 169, 55, 157, 68, 3
+PM 5110 DATA 169, 128, 157, 69, 3, 169, 0, 157
+FP 5120 DATA 74, 3, 157, 75, 3, 32, 86, 228
+ON 5130 DATA 48, 13, 160, 74, 185, 0, 129, 145
+PO 5140 DATA 69, 136, 16, 248, 32, 148, 16, 96
+GB 5150 DATA 68, 56, 58, 0, 0, 129, 73, 129
+GI 5160 DATA 2, 105, 0, 105, 0, 0, 0, 0
+BF 5170 DATA 0, 0, 15, 255, 255, 255, 0, 0
+MG 5180 DATA 255, 255, 255, 255, 255, 255, 255, 15
+OA 5190 DATA 255, 255, 128, 0, 0, 0, 0, 0
+JF 5200 DATA 0, 0, 0, 0, 0, 0, 0, 0
+JG 5210 DATA 0, 0, 0, 0, 0, 0, 0, 0
+JH 5220 DATA 0, 0, 0, 0, 0, 0, 0, 0
+JI 5230 DATA 0, 0, 0, 0, 0, 0, 0, 0
+JJ 5240 DATA 0, 0, 0, 0, 0, 0, 0, 0
+NK 5250 DATA 0, 0, 224, 2, 225, 2, 0, 128
+EI 5260 DATA -1, (END OF DATA)
