@@ -24,7 +24,5 @@ Files:
 
 ---
 
-Holger Janz
-
-<holgerjanz@abbuc.social>
+holgerjanz@abbuc.social
 
